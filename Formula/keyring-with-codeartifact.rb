@@ -63,6 +63,11 @@ class KeyringWithCodeartifact < Formula
     sha256 "ac7b0082840216ee5445c786b5b6c599a455cb3a0dc02dd40fd4d50d0bcaac2e"
   end
 
+  resource "boto3" do
+    url "https://files.pythonhosted.org/packages/2c/8f/5ba068d4f17b933e35a565b08c6cc39de3bfe710e46f1144d406f22a1912/boto3-1.40.22.tar.gz"
+    sha256 "9972752b50fd376576a6e04a7d6afc69762a368f29b85314598edb62c1894663"
+  end
+
   def install
     virtualenv_install_with_resources
 
