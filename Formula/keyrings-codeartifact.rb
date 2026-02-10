@@ -61,24 +61,53 @@ class KeyringsCodeartifact < Formula
     # Copy *contents* of site-packages into vendor
     # (keyrings/, boto*, requests*, dist-info, etc.)
     cp_r (sp/"."), vendor
+
+    config_vendor_path = opt_libexec/"vendor/site-packages"
+
+    (bin/"configure-keyrings-codeartifact").write <<~EOS
+      #!/bin/bash
+      exec "#{Formula["python@3.12"].opt_bin}/python3.12" - <<'PY'
+      import configparser
+      import os
+      from pathlib import Path
+
+      VENDOR_PATH = #{config_vendor_path.to_s.inspect}
+
+      # XDG config location (what keyring uses on macOS/Linux)
+      xdg = os.environ.get("XDG_CONFIG_HOME")
+      config_dir = Path(xdg) if xdg else (Path.home() / ".config")
+      keyring_dir = config_dir / "python_keyring"
+      cfg_path = keyring_dir / "keyringrc.cfg"
+
+      keyring_dir.mkdir(parents=True, exist_ok=True)
+
+      cp = configparser.ConfigParser()
+
+      if cfg_path.exists():
+        cp.read(cfg_path)
+
+      if "backend" not in cp:
+        cp["backend"] = {}
+
+      cp["backend"]["keyring-path"] = VENDOR_PATH
+
+      if not cp["backend"].get("default-keyring"):
+        cp["backend"]["default-keyring"] = "keyring.backends.chainer.ChainerBackend"
+
+      with cfg_path.open("w") as f:
+        cp.write(f)
+
+      print(f"Updated {cfg_path}")
+      PY
+    EOS
+    chmod 0755, bin/"configure-keyrings-codeartifact"
   end
 
   def caveats
-    site_packages = Language::Python.site_packages("python3.12")
     <<~EOS
-      This formula installs keyrings.codeartifact into:
-        #{opt_libexec}/vendor/site-packages
+      To enable discovery of this backend by the `keyring` CLI, run:
 
-      To let the *system* `keyring` CLI discover this backend, add the path above to
-      your keyring configuration (keyringrc.cfg) via `keyring-path`.
-
-      Find your config file location with:
-        keyring diagnose
-
-      Then add (or update) something like:
-
-        [backend]
-        keyring-path=#{opt_libexec}/vendor/site-packages
+        configure-keyrings-codeartifact
 
     EOS
   end
